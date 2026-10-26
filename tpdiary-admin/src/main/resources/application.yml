@@ -1,0 +1,8 @@
+server:
+  port: ${TPDIARY_ADMIN_PORT:8081}
+
+spring:
+  application:
+    name: tpdiary-admin
+  profiles:
+    active: ${tpdiary.build.profile}

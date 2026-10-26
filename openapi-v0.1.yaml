@@ -1,0 +1,2084 @@
+openapi: 3.0.3
+info:
+  title: TPDiary API
+  version: 0.1.0
+  description: |
+    TPDiary 一期 MVP 接口契约。
+    统一响应为 { code, message, data, traceId }，成功业务码为 0。
+    ID 在 JSON 中以十进制字符串传输，避免 JavaScript 64 位整数精度丢失。
+    时间使用带时区偏移的 ISO 8601；额度与时长统一使用整数秒。
+servers:
+  - url: /
+tags:
+  - name: Auth
+    description: 注册、登录、验证码、密码找回和游客 Token
+  - name: User
+    description: 用户资料
+  - name: Task
+    description: 短任务、长期任务和奖励节点
+  - name: AI
+    description: AI 任务拆解
+  - name: Timer
+    description: 专注和躺平计时
+  - name: Quota
+    description: 额度余额、批次和流水
+  - name: Proctor
+    description: 在岗督学
+  - name: Reminder
+    description: 智能提醒配置
+  - name: Dashboard
+    description: 数据看板
+  - name: Community
+    description: 轻量社区
+  - name: File
+    description: 文件上传
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: 手机号注册
+      security: []
+      x-auth-required: false
+      x-guest-supported: false
+      x-rate-limit: {limit: 5, windowSeconds: 60, scope: ip}
+      x-error-codes: [40001, 40002, 40104, 40901, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: 密码或短信验证码登录
+      security: []
+      x-auth-required: false
+      x-guest-supported: false
+      x-rate-limit: {limit: 10, windowSeconds: 60, scope: ip}
+      x-error-codes: [40001, 40104, 40105, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/auth/sms-code:
+    post:
+      tags: [Auth]
+      operationId: sendSmsCode
+      summary: 发送短信验证码
+      security: []
+      x-auth-required: false
+      x-guest-supported: false
+      x-rate-limit: {limit: 5, windowSeconds: 60, scope: ip+phone}
+      x-error-codes: [40001, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SmsCodeRequest'}
+      responses:
+        '200':
+          description: 验证码已受理
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AcceptedResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/auth/password/reset:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      summary: 通过短信验证码找回密码
+      security: []
+      x-auth-required: false
+      x-guest-supported: false
+      x-rate-limit: {limit: 5, windowSeconds: 60, scope: ip+phone}
+      x-error-codes: [40001, 40104, 40401, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PasswordResetRequest'}
+      responses:
+        '200':
+          description: 密码已重置
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AcceptedResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/auth/guest:
+    post:
+      tags: [Auth]
+      operationId: createGuestToken
+      summary: 创建游客 Token
+      security: []
+      x-auth-required: false
+      x-guest-supported: false
+      x-rate-limit: {limit: 20, windowSeconds: 60, scope: ip}
+      x-error-codes: [42901, 50000]
+      responses:
+        '200':
+          description: 游客 Token
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/user/profile:
+    get:
+      tags: [User]
+      operationId: getProfile
+      summary: 查询个人资料
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40401, 42901, 50000]
+      responses:
+        '200':
+          description: 个人资料
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProfileResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    put:
+      tags: [User]
+      operationId: updateProfile
+      summary: 编辑个人资料
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserProfileUpdateRequest'}
+      responses:
+        '200':
+          description: 更新后的个人资料
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProfileResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/user/avatar:
+    post:
+      tags: [User]
+      operationId: uploadAvatar
+      summary: 上传头像
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 10, windowSeconds: 60, scope: userId}
+      x-error-codes: [40003, 40004, 40100, 40101, 40300, 40103, 42901, 50002, 50000]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 头像地址
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileUploadResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '413': {$ref: '#/components/responses/Api413'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/tasks:
+    post:
+      tags: [Task]
+      operationId: createTask
+      summary: 创建任务
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 40908, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskWriteRequest'}
+      responses:
+        '200':
+          description: 创建后的任务
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    get:
+      tags: [Task]
+      operationId: listTasks
+      summary: 查询任务列表
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 42901, 50000]
+      parameters:
+        - name: type
+          in: query
+          schema: {$ref: '#/components/schemas/TaskType'}
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/TaskStatus'}
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 分页任务列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/tasks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PathId'
+    get:
+      tags: [Task]
+      operationId: getTask
+      summary: 查询任务详情
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40401, 40303, 42901, 50000]
+      responses:
+        '200':
+          description: 任务详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    put:
+      tags: [Task]
+      operationId: updateTask
+      summary: 编辑任务
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 40303, 40401, 40908, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskWriteRequest'}
+      responses:
+        '200':
+          description: 更新后的任务
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    delete:
+      tags: [Task]
+      operationId: deleteTask
+      summary: 删除任务
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 20, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40303, 40401, 40908, 42901, 50000]
+      responses:
+        '200':
+          description: 删除结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SimpleResultResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/tasks/{id}/nodes:
+    parameters:
+      - $ref: '#/components/parameters/PathId'
+    post:
+      tags: [Task]
+      operationId: createTaskNodes
+      summary: 新增任务奖励节点
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40303, 40401, 40908, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskNodesWriteRequest'}
+      responses:
+        '200':
+          description: 节点列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskNodeListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    put:
+      tags: [Task]
+      operationId: replaceTaskNodes
+      summary: 替换未领取的任务奖励节点
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40303, 40401, 40908, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskNodesWriteRequest'}
+      responses:
+        '200':
+          description: 节点列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskNodeListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/tasks/{id}/nodes/{nodeId}/claim:
+    parameters:
+      - $ref: '#/components/parameters/PathId'
+      - name: nodeId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/Id'}
+    post:
+      tags: [Task]
+      operationId: claimTaskNode
+      summary: 完成并领取任务节点奖励
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 20, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40303, 40401, 40907, 40909, 42901, 50000]
+      x-idempotency:
+        mechanism: node-status-and-unique-ledger-key
+        key: 'NODE_REWARD:{nodeId}'
+        samePayload: return-original-success
+        differentPayload: 40909
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 节点奖励结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NodeClaimResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/ai/plan:
+    post:
+      tags: [AI]
+      operationId: generateAiPlan
+      summary: 生成任务拆解与学习规划
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 10, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 40401, 42901, 50001, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AiPlanRequest'}
+      responses:
+        '200':
+          description: 成功结果或规则模板降级结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AiPlanResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/focus/start:
+    post:
+      tags: [Timer]
+      operationId: startFocus
+      summary: 开始专注
+      x-auth-required: true
+      x-guest-supported: true
+      x-rate-limit: {limit: 10, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40103, 40902, 42901, 50000]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FocusStartRequest'}
+      responses:
+        '200':
+          description: 当前专注会话
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FocusSessionResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/focus/pause:
+    post:
+      tags: [Timer]
+      operationId: pauseFocus
+      summary: 暂停专注
+      x-auth-required: true
+      x-guest-supported: true
+      x-rate-limit: {limit: 60, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40103, 40401, 40902, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FocusSessionActionRequest'}
+      responses:
+        '200':
+          description: 更新后的会话
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FocusSessionResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/focus/resume:
+    post:
+      tags: [Timer]
+      operationId: resumeFocus
+      summary: 恢复专注
+      x-auth-required: true
+      x-guest-supported: true
+      x-rate-limit: {limit: 60, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40103, 40401, 40902, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FocusSessionActionRequest'}
+      responses:
+        '200':
+          description: 更新后的会话
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FocusSessionResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/focus/stop:
+    post:
+      tags: [Timer]
+      operationId: stopFocus
+      summary: 结束专注并结算额度
+      description: |
+        首次服务端接受时间写入会话 end_time，并作为日/周归属时间。
+        重复提交同一 sessionId 返回原结算结果。
+      x-auth-required: true
+      x-guest-supported: true
+      x-rate-limit: {limit: 20, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40103, 40401, 40902, 40909, 42901, 50000]
+      x-idempotency:
+        mechanism: session-settled-flag-and-ledger-key
+        key: 'FOCUS_SETTLE:{sessionId}'
+        samePayload: return-original-success
+        differentPayload: 40909
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FocusStopRequest'}
+      responses:
+        '200':
+          description: 专注结算结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FocusSettlementResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/focus/current:
+    get:
+      tags: [Timer]
+      operationId: getCurrentFocus
+      summary: 查询当前专注会话
+      x-auth-required: true
+      x-guest-supported: true
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40103, 42901, 50000]
+      responses:
+        '200':
+          description: 当前专注会话；无会话时 data.session 为 null
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentFocusResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/rest/start:
+    post:
+      tags: [Timer]
+      operationId: startRest
+      summary: 开始躺平
+      description: 余额为 0 时返回 40905 且不创建会话。
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40904, 40905, 40909, 42901, 50000]
+      x-idempotency:
+        mechanism: active-session-and-idempotency-key
+        key: 'REST_START:{userId}:{Idempotency-Key}'
+        samePayload: return-original-success
+        differentPayload: 40909
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 躺平会话和实时余额
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RestStartResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/rest/stop:
+    post:
+      tags: [Timer]
+      operationId: stopRest
+      summary: 结束躺平并完成扣减
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40401, 40904, 40909, 42901, 50000]
+      x-idempotency:
+        mechanism: session-consumed-seconds-and-ledger-key
+        key: 'REST_CONSUME:{sessionId}:{sequence}:{batchId}'
+        samePayload: return-original-success
+        differentPayload: 40909
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RestStopRequest'}
+      responses:
+        '200':
+          description: 躺平扣减结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RestSettlementResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/quota/balance:
+    get:
+      tags: [Quota]
+      operationId: getQuotaBalance
+      summary: 查询额度余额
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 42901, 50000]
+      responses:
+        '200':
+          description: 额度余额
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuotaBalanceResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/quota/batches:
+    get:
+      tags: [Quota]
+      operationId: listQuotaBatches
+      summary: 查询额度批次明细
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 42901, 50000]
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/QuotaBatchStatus'}
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 分页额度批次
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuotaBatchListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/quota/ledger:
+    get:
+      tags: [Quota]
+      operationId: listQuotaLedger
+      summary: 查询额度收支流水
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 42901, 50000]
+      parameters:
+        - name: direction
+          in: query
+          schema: {$ref: '#/components/schemas/QuotaLedgerDirection'}
+        - name: startTime
+          in: query
+          schema: {type: string, format: date-time}
+        - name: endTime
+          in: query
+          schema: {type: string, format: date-time}
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 分页额度流水
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuotaLedgerListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/proctor/event:
+    post:
+      tags: [Proctor]
+      operationId: reportProctorEvent
+      summary: 上报在岗或离席事件
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 40106, 40401, 40902, 42901, 50000]
+      parameters:
+        - name: X-Proctor-Signature
+          in: header
+          required: true
+          description: 端侧事件签名，服务端校验来源和时间窗口
+          schema: {type: string, minLength: 16, maxLength: 256}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProctorEventRequest'}
+      responses:
+        '200':
+          description: 事件已接收
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AcceptedResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '409': {$ref: '#/components/responses/Api409'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/proctor/config:
+    get:
+      tags: [Proctor]
+      operationId: getProctorConfig
+      summary: 查询督学配置
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 60, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 42901, 50000]
+      responses:
+        '200':
+          description: 督学配置
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProctorConfigResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    put:
+      tags: [Proctor]
+      operationId: updateProctorConfig
+      summary: 修改督学配置
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProctorConfigRequest'}
+      responses:
+        '200':
+          description: 更新后的督学配置
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProctorConfigResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/reminders:
+    get:
+      tags: [Reminder]
+      operationId: getReminderConfig
+      summary: 查询提醒配置
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 60, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 42901, 50000]
+      responses:
+        '200':
+          description: 提醒配置
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReminderConfigResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    put:
+      tags: [Reminder]
+      operationId: updateReminderConfig
+      summary: 修改提醒配置
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReminderConfigRequest'}
+      responses:
+        '200':
+          description: 更新后的提醒配置
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReminderConfigResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/dashboard/overview:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboardOverview
+      summary: 查询首页总览
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 42901, 50000]
+      responses:
+        '200':
+          description: 首页总览
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DashboardOverviewResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/dashboard/calendar:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboardCalendar
+      summary: 查询打卡日历
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 42901, 50000]
+      parameters:
+        - name: month
+          in: query
+          required: true
+          description: 业务月份，YYYY-MM
+          schema: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$', example: '2026-10'}
+      responses:
+        '200':
+          description: 日历记录
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DashboardCalendarResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/dashboard/stat:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboardStat
+      summary: 查询周或月图表数据
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40002, 40100, 40101, 40300, 40103, 42901, 50000]
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema: {type: string, enum: [WEEK, MONTH]}
+        - name: anchorDate
+          in: query
+          description: 目标日期，缺省为服务端当前业务日
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: 图表数据
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DashboardStatResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/posts:
+    post:
+      tags: [Community]
+      operationId: createPost
+      summary: 发布社区帖子
+      description: 当日有效专注累计未达到 1800 秒时返回 40301。
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 30, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40301, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PostCreateRequest'}
+      responses:
+        '200':
+          description: 创建后的帖子
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    get:
+      tags: [Community]
+      operationId: listPosts
+      summary: 查询帖子列表
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 42901, 50000]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 分页帖子
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/posts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PathId'
+    get:
+      tags: [Community]
+      operationId: getPost
+      summary: 查询帖子详情
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40401, 42901, 50000]
+      responses:
+        '200':
+          description: 帖子详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    delete:
+      tags: [Community]
+      operationId: deletePost
+      summary: 删除自己的帖子
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 20, windowSeconds: 60, scope: userId}
+      x-error-codes: [40100, 40101, 40300, 40103, 40303, 40401, 42901, 50000]
+      responses:
+        '200':
+          description: 删除结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SimpleResultResponse'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/posts/{id}/like:
+    parameters:
+      - $ref: '#/components/parameters/PathId'
+    post:
+      tags: [Community]
+      operationId: setPostLike
+      summary: 设置点赞状态
+      description: 同一用户对同一帖子重复提交相同 liked 值时保持幂等。
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 60, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40401, 42901, 50000]
+      x-idempotency:
+        mechanism: unique-post-user-state
+        key: 'LIKE:{postId}:{userId}'
+        samePayload: return-current-success
+        differentPayload: replace-desired-state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LikeRequest'}
+      responses:
+        '200':
+          description: 点赞状态和点赞数
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LikeResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/posts/{id}/comments:
+    parameters:
+      - $ref: '#/components/parameters/PathId'
+    get:
+      tags: [Community]
+      operationId: listPostComments
+      summary: 查询帖子评论
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 120, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40401, 42901, 50000]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 分页评论
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CommentListResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+    post:
+      tags: [Community]
+      operationId: createPostComment
+      summary: 发表评论
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 60, windowSeconds: 60, scope: userId}
+      x-error-codes: [40001, 40100, 40101, 40300, 40103, 40401, 42901, 50000]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommentCreateRequest'}
+      responses:
+        '200':
+          description: 创建后的评论
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CommentResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '404': {$ref: '#/components/responses/Api404'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+  /api/v1/files/upload:
+    post:
+      tags: [File]
+      operationId: uploadFile
+      summary: 上传图片
+      x-auth-required: true
+      x-guest-supported: false
+      x-rate-limit: {limit: 20, windowSeconds: 60, scope: userId}
+      x-error-codes: [40003, 40004, 40100, 40101, 40300, 40103, 42901, 50002, 50000]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 文件地址
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileUploadResponse'}
+        '400': {$ref: '#/components/responses/Api400'}
+        '401': {$ref: '#/components/responses/Api401'}
+        '403': {$ref: '#/components/responses/Api403'}
+        '413': {$ref: '#/components/responses/Api413'}
+        '429': {$ref: '#/components/responses/Api429'}
+        '500': {$ref: '#/components/responses/Api500'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 登录用户与游客均使用 Authorization Bearer；游客能力由 x-guest-supported 标记。
+  parameters:
+    PathId:
+      name: id
+      in: path
+      required: true
+      description: 资源 ID，JSON 中以十进制字符串传输
+      schema: {$ref: '#/components/schemas/Id'}
+    Page:
+      name: page
+      in: query
+      description: 页码，从 1 开始
+      schema: {type: integer, minimum: 1, default: 1}
+    PageSize:
+      name: pageSize
+      in: query
+      description: 每页数量，最大 100
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 客户端生成的 8～128 字符幂等键；同键同请求返回原结果，同键不同载荷返回 40909。
+      schema: {type: string, minLength: 8, maxLength: 128, example: '7a2f3c8d-8a55-4a67-9f44-b90119f5421e'}
+  responses:
+    Api400:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api401:
+      description: 未认证或 Token 无效
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api403:
+      description: 权限不足
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api404:
+      description: 资源不存在
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api409:
+      description: 业务状态冲突
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api413:
+      description: 上传内容过大
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api429:
+      description: 请求过多
+      headers:
+        Retry-After:
+          description: 建议重试等待秒数
+          schema: {type: integer, minimum: 1}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Api500:
+      description: 系统异常
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+  schemas:
+    Id:
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      description: 数据库 BIGINT ID 的十进制字符串表示。
+    TaskType:
+      type: string
+      enum: [DAILY, PERIODIC]
+    TaskStatus:
+      type: string
+      enum: [PENDING, IN_PROGRESS, COMPLETED, CANCELLED]
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 时间，必须包含时区偏移。
+      example: '2026-10-23T23:59:59.700+08:00'
+    Seconds:
+      type: integer
+      format: int64
+      minimum: 0
+      description: 非负整数秒；禁止浮点。
+    ResponseBase:
+      type: object
+      required: [code, message, traceId]
+      properties:
+        code:
+          type: integer
+          example: 0
+          description: 0 表示成功，其他值见错误码字典。
+        message:
+          type: string
+          example: ok
+        traceId:
+          type: string
+          minLength: 8
+          maxLength: 64
+          example: '4f4c57b631e94b5794f37f6f4c66de19'
+    ApiErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              nullable: true
+              description: 错误时固定为 null。
+    AcceptedData:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: {type: boolean, example: true}
+        message: {type: string, nullable: true}
+    AcceptedResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/AcceptedData'}
+    RegisterRequest:
+      type: object
+      required: [phone, smsCode, password]
+      properties:
+        phone:
+          type: string
+          pattern: '^1[0-9]{10}$'
+        smsCode:
+          type: string
+          pattern: '^[0-9]{4,8}$'
+        password:
+          type: string
+          minLength: 8
+          maxLength: 64
+          format: password
+        nickname:
+          type: string
+          maxLength: 50
+          default: ''
+    LoginRequest:
+      type: object
+      required: [loginType, phone]
+      description: PASSWORD 模式必须提供 password；SMS_CODE 模式必须提供 smsCode。
+      properties:
+        loginType: {type: string, enum: [PASSWORD, SMS_CODE]}
+        phone:
+          type: string
+          pattern: '^1[0-9]{10}$'
+        password:
+          type: string
+          format: password
+          nullable: true
+        smsCode:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{4,8}$'
+    SmsCodeRequest:
+      type: object
+      required: [phone, purpose]
+      properties:
+        phone:
+          type: string
+          pattern: '^1[0-9]{10}$'
+        purpose: {type: string, enum: [REGISTER, LOGIN, RESET_PASSWORD]}
+    PasswordResetRequest:
+      type: object
+      required: [phone, smsCode, newPassword]
+      properties:
+        phone:
+          type: string
+          pattern: '^1[0-9]{10}$'
+        smsCode:
+          type: string
+          pattern: '^[0-9]{4,8}$'
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 64
+          format: password
+    AuthUser:
+      type: object
+      required: [id, nickname, isGuest, role]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        nickname: {type: string}
+        isGuest: {type: boolean}
+        role: {type: string, enum: [USER, GUEST]}
+    AuthData:
+      type: object
+      required: [accessToken, tokenType, expiresInSeconds, user]
+      properties:
+        accessToken: {type: string}
+        tokenType: {type: string, enum: [Bearer]}
+        expiresInSeconds:
+          type: integer
+          format: int64
+          minimum: 1
+        user: {$ref: '#/components/schemas/AuthUser'}
+    AuthResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/AuthData'}
+    IdentityType:
+      type: string
+      enum: [DAILY_DISCIPLINE, POSTGRADUATE_EXAM, CIVIL_SERVICE_EXAM, SKILL_LEARNING, STUDENT_EXAM]
+    UserProfile:
+      type: object
+      required: [id, nickname, intro, identityType, isGuest]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        phone:
+          type: string
+          description: 仅当前用户可见；脱敏格式由服务端决定。
+        nickname: {type: string}
+        avatarUrl: {type: string, format: uri, nullable: true}
+        intro: {type: string}
+        birthday:
+          type: string
+          format: date
+          nullable: true
+        identityType: {$ref: '#/components/schemas/IdentityType'}
+        isGuest: {type: boolean}
+    UserProfileUpdateRequest:
+      type: object
+      description: 字段省略表示不修改；标为 nullable 的字段传 null 表示清空。
+      properties:
+        nickname: {type: string, minLength: 1, maxLength: 50}
+        avatarUrl: {type: string, format: uri, nullable: true, maxLength: 512}
+        intro: {type: string, maxLength: 500}
+        birthday: {type: string, format: date, nullable: true}
+        identityType: {$ref: '#/components/schemas/IdentityType'}
+    ProfileResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/UserProfile'}
+    FileData:
+      type: object
+      required: [url, objectKey]
+      properties:
+        url: {type: string, format: uri}
+        objectKey: {type: string}
+        contentType: {type: string}
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+    FileUploadResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/FileData'}
+    SimpleResultData:
+      type: object
+      required: [success]
+      properties:
+        success: {type: boolean}
+        message: {type: string, nullable: true}
+      example: {success: true, message: null}
+    SimpleResultResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/SimpleResultData'}
+    TaskNodeStatus:
+      type: string
+      enum: [PENDING, CLAIMED, CANCELLED]
+    TaskNodeInput:
+      type: object
+      required: [seq, name, rewardSeconds]
+      properties:
+        seq:
+          type: integer
+          minimum: 1
+          maximum: 5
+        name: {type: string, minLength: 1, maxLength: 100}
+        description: {type: string, maxLength: 500, default: ''}
+        rewardSeconds: {$ref: '#/components/schemas/Seconds'}
+    TaskNodesWriteRequest:
+      type: object
+      required: [nodes]
+      properties:
+        nodes:
+          type: array
+          maxItems: 5
+          items: {$ref: '#/components/schemas/TaskNodeInput'}
+          description: seq 必须唯一；PUT 不修改已领取节点。
+    TaskNode:
+      type: object
+      required: [id, seq, name, description, rewardSeconds, status]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        seq: {type: integer, minimum: 1, maximum: 5}
+        name: {type: string}
+        description: {type: string}
+        rewardSeconds: {$ref: '#/components/schemas/Seconds'}
+        status: {$ref: '#/components/schemas/TaskNodeStatus'}
+        claimedAt: {$ref: '#/components/schemas/Timestamp'}
+    TaskWriteRequest:
+      type: object
+      required: [type, title, priority, estimatedSeconds]
+      properties:
+        type: {$ref: '#/components/schemas/TaskType'}
+        title: {type: string, minLength: 1, maxLength: 100}
+        content: {type: string, nullable: true}
+        priority: {type: integer, minimum: 0, maximum: 5}
+        estimatedSeconds: {$ref: '#/components/schemas/Seconds'}
+        dueTime: {$ref: '#/components/schemas/Timestamp'}
+        nodes:
+          type: array
+          maxItems: 5
+          items: {$ref: '#/components/schemas/TaskNodeInput'}
+    Task:
+      type: object
+      required: [id, type, title, priority, estimatedSeconds, status, progressPercent, nodes]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        type: {$ref: '#/components/schemas/TaskType'}
+        title: {type: string}
+        content: {type: string, nullable: true}
+        priority: {type: integer, minimum: 0, maximum: 5}
+        estimatedSeconds: {$ref: '#/components/schemas/Seconds'}
+        dueTime: {$ref: '#/components/schemas/Timestamp'}
+        remainingDays: {type: integer, nullable: true, minimum: 0}
+        status: {$ref: '#/components/schemas/TaskStatus'}
+        progressPercent: {type: integer, minimum: 0, maximum: 100}
+        planId: {$ref: '#/components/schemas/Id'}
+        nodes:
+          type: array
+          items: {$ref: '#/components/schemas/TaskNode'}
+        createTime: {$ref: '#/components/schemas/Timestamp'}
+        updateTime: {$ref: '#/components/schemas/Timestamp'}
+    TaskResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/Task'}
+    TaskPageData:
+      type: object
+      required: [page, pageSize, total, items]
+      properties:
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Task'}
+    TaskListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/TaskPageData'}
+    TaskNodeListData:
+      type: object
+      required: [taskId, nodes]
+      properties:
+        taskId: {$ref: '#/components/schemas/Id'}
+        nodes:
+          type: array
+          maxItems: 5
+          items: {$ref: '#/components/schemas/TaskNode'}
+    TaskNodeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/TaskNodeListData'}
+    NodeClaimData:
+      type: object
+      required: [taskId, nodeId, status, grantedSeconds, grantReason, availableQuotaSeconds, replayed]
+      properties:
+        taskId: {$ref: '#/components/schemas/Id'}
+        nodeId: {$ref: '#/components/schemas/Id'}
+        status: {$ref: '#/components/schemas/TaskNodeStatus'}
+        grantedSeconds: {$ref: '#/components/schemas/Seconds'}
+        grantReason: {$ref: '#/components/schemas/GrantReason'}
+        availableQuotaSeconds: {$ref: '#/components/schemas/Seconds'}
+        dailyRemainingGrantSeconds: {$ref: '#/components/schemas/Seconds'}
+        weeklyRemainingGrantSeconds: {$ref: '#/components/schemas/Seconds'}
+        replayed: {type: boolean}
+    NodeClaimResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/NodeClaimData'}
+    AiPlanRequest:
+      type: object
+      required: [taskContent, deadline, baseline]
+      properties:
+        taskId: {$ref: '#/components/schemas/Id'}
+        taskContent: {type: string, minLength: 1, maxLength: 5000}
+        deadline: {$ref: '#/components/schemas/Timestamp'}
+        baseline:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: 用户当前基础、每日可用时间或困难说明。
+    AiDecompositionItem:
+      type: object
+      required: [seq, title, estimatedSeconds]
+      properties:
+        seq: {type: integer, minimum: 1}
+        title: {type: string}
+        estimatedSeconds: {$ref: '#/components/schemas/Seconds'}
+    AiDailyAllocation:
+      type: object
+      required: [planDate, content, estimatedSeconds]
+      properties:
+        planDate: {type: string, format: date}
+        content: {type: string}
+        estimatedSeconds: {$ref: '#/components/schemas/Seconds'}
+    AiPlanResult:
+      type: object
+      required: [summary, decomposition, dailyAllocations, rhythmAdvice, stagePlan]
+      properties:
+        summary: {type: string}
+        decomposition:
+          type: array
+          items: {$ref: '#/components/schemas/AiDecompositionItem'}
+        dailyAllocations:
+          type: array
+          items: {$ref: '#/components/schemas/AiDailyAllocation'}
+        rhythmAdvice:
+          type: array
+          items: {type: string}
+        stagePlan:
+          type: array
+          items: {type: string}
+    AiPlanData:
+      type: object
+      required: [id, sourceType, status, result, createTime]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        taskId: {$ref: '#/components/schemas/Id'}
+        sourceType: {type: string, enum: [LLM, TEMPLATE]}
+        status: {type: string, enum: [SUCCESS, FALLBACK]}
+        result: {$ref: '#/components/schemas/AiPlanResult'}
+        createTime: {$ref: '#/components/schemas/Timestamp'}
+    AiPlanResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/AiPlanData'}
+    FocusStatus:
+      type: string
+      enum: [RUNNING, PAUSED, ENDED]
+    FocusEndReason:
+      type: string
+      enum: [USER_STOP, INACTIVITY, ABNORMAL]
+    SettlementStatus:
+      type: string
+      enum: [NOT_ATTEMPTED, SETTLED, FAILED]
+    GrantReason:
+      type: string
+      enum:
+        - GRANTED_FULL
+        - GRANTED_DAILY_CAPPED
+        - GRANTED_WEEKLY_CAPPED
+        - GRANTED_BOTH_CAPPED
+        - NO_EFFECTIVE_QUOTA
+        - DAILY_LIMIT_REACHED
+        - WEEKLY_LIMIT_REACHED
+        - BOTH_LIMITS_REACHED
+    FocusStartRequest:
+      type: object
+      properties:
+        taskId: {$ref: '#/components/schemas/Id'}
+    FocusSessionActionRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: {$ref: '#/components/schemas/Id'}
+    FocusStopRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: {$ref: '#/components/schemas/Id'}
+        clientEndedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          description: 仅用于诊断，不参与周期归属和有效时长计算。
+    FocusSession:
+      type: object
+      required: [id, status, startTime, pausedSeconds, invalidSeconds, effectiveSeconds, earnedSeconds, settled, settlementStatus]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        taskId: {$ref: '#/components/schemas/Id'}
+        status: {$ref: '#/components/schemas/FocusStatus'}
+        endReason: {$ref: '#/components/schemas/FocusEndReason'}
+        startTime: {$ref: '#/components/schemas/Timestamp'}
+        endTime: {$ref: '#/components/schemas/Timestamp'}
+        lastHeartbeatTime: {$ref: '#/components/schemas/Timestamp'}
+        pausedSeconds: {$ref: '#/components/schemas/Seconds'}
+        invalidSeconds: {$ref: '#/components/schemas/Seconds'}
+        effectiveSeconds: {$ref: '#/components/schemas/Seconds'}
+        earnedSeconds: {$ref: '#/components/schemas/Seconds'}
+        settled: {type: boolean}
+        settlementStatus: {$ref: '#/components/schemas/SettlementStatus'}
+        settlementAttemptCount: {type: integer, minimum: 0}
+        settlementError: {type: string, nullable: true}
+        nextSettlementRetryAt: {$ref: '#/components/schemas/Timestamp'}
+    FocusSessionResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/FocusSession'}
+    FocusSettlementData:
+      type: object
+      required: [session, grantedSeconds, grantReason, availableQuotaSeconds, postUnlocked, replayed]
+      properties:
+        session: {$ref: '#/components/schemas/FocusSession'}
+        grantedSeconds: {$ref: '#/components/schemas/Seconds'}
+        grantReason: {$ref: '#/components/schemas/GrantReason'}
+        availableQuotaSeconds: {$ref: '#/components/schemas/Seconds'}
+        dailyRemainingGrantSeconds: {$ref: '#/components/schemas/Seconds'}
+        weeklyRemainingGrantSeconds: {$ref: '#/components/schemas/Seconds'}
+        postUnlocked: {type: boolean}
+        replayed: {type: boolean}
+    FocusSettlementResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/FocusSettlementData'}
+    CurrentFocusData:
+      type: object
+      required: [session]
+      properties:
+        session:
+          allOf:
+            - $ref: '#/components/schemas/FocusSession'
+          nullable: true
+    CurrentFocusResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/CurrentFocusData'}
+    RestStatus:
+      type: string
+      enum: [RUNNING, ENDED]
+    RestEndReason:
+      type: string
+      enum: [USER_STOP, BALANCE_EXHAUSTED, ABNORMAL]
+    RestSession:
+      type: object
+      required: [id, status, startTime, consumedSeconds]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        status: {$ref: '#/components/schemas/RestStatus'}
+        endReason: {$ref: '#/components/schemas/RestEndReason'}
+        startTime: {$ref: '#/components/schemas/Timestamp'}
+        endTime: {$ref: '#/components/schemas/Timestamp'}
+        lastHeartbeatTime: {$ref: '#/components/schemas/Timestamp'}
+        consumedSeconds: {$ref: '#/components/schemas/Seconds'}
+    RestStopRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: {$ref: '#/components/schemas/Id'}
+    RestStartData:
+      type: object
+      required: [session, availableQuotaSeconds, replayed]
+      properties:
+        session: {$ref: '#/components/schemas/RestSession'}
+        availableQuotaSeconds: {$ref: '#/components/schemas/Seconds'}
+        replayed: {type: boolean}
+    RestStartResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/RestStartData'}
+    RestSettlementData:
+      type: object
+      required: [session, deductedSeconds, remainingQuotaSeconds, autoEnded, replayed]
+      properties:
+        session: {$ref: '#/components/schemas/RestSession'}
+        deductedSeconds: {$ref: '#/components/schemas/Seconds'}
+        remainingQuotaSeconds: {$ref: '#/components/schemas/Seconds'}
+        autoEnded: {type: boolean}
+        replayed: {type: boolean}
+    RestSettlementResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/RestSettlementData'}
+    QuotaBatchStatus:
+      type: string
+      enum: [VALID, EXHAUSTED, EXPIRED]
+    QuotaLedgerDirection:
+      type: string
+      enum: [INCOME, EXPENSE, EXPIRE]
+    QuotaBalanceData:
+      type: object
+      required: [availableSeconds, todayEarnedSeconds, todayConsumedSeconds, todayExpiredSeconds, postUnlocked]
+      properties:
+        availableSeconds: {$ref: '#/components/schemas/Seconds'}
+        todayEarnedSeconds: {$ref: '#/components/schemas/Seconds'}
+        todayConsumedSeconds: {$ref: '#/components/schemas/Seconds'}
+        todayExpiredSeconds: {$ref: '#/components/schemas/Seconds'}
+        postUnlocked: {type: boolean}
+        nextExpireAt: {$ref: '#/components/schemas/Timestamp'}
+    QuotaBalanceResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/QuotaBalanceData'}
+    QuotaBatch:
+      type: object
+      required: [id, amountSeconds, remainSeconds, sourceType, grantTime, grantDate, expireAt, status]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        amountSeconds: {$ref: '#/components/schemas/Seconds'}
+        remainSeconds: {$ref: '#/components/schemas/Seconds'}
+        sourceType: {type: string, enum: [FOCUS_SETTLE, NODE_REWARD]}
+        sourceId: {$ref: '#/components/schemas/Id'}
+        grantTime: {$ref: '#/components/schemas/Timestamp'}
+        grantDate: {type: string, format: date}
+        expireAt: {$ref: '#/components/schemas/Timestamp'}
+        status: {$ref: '#/components/schemas/QuotaBatchStatus'}
+    QuotaBatchPageData:
+      type: object
+      required: [page, pageSize, total, items]
+      properties:
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QuotaBatch'}
+    QuotaBatchListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/QuotaBatchPageData'}
+    QuotaLedgerEntry:
+      type: object
+      required: [id, direction, amountSeconds, bizType, createTime]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        batchId: {$ref: '#/components/schemas/Id'}
+        direction: {$ref: '#/components/schemas/QuotaLedgerDirection'}
+        amountSeconds: {$ref: '#/components/schemas/Seconds'}
+        bizType: {type: string}
+        bizId: {type: string}
+        createTime: {$ref: '#/components/schemas/Timestamp'}
+    QuotaLedgerPageData:
+      type: object
+      required: [page, pageSize, total, items]
+      properties:
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QuotaLedgerEntry'}
+    QuotaLedgerListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/QuotaLedgerPageData'}
+    ProctorEventType:
+      type: string
+      enum: [PRESENT, AWAY]
+    ProctorEventRequest:
+      type: object
+      required: [sessionId, eventType, eventTime, source]
+      properties:
+        sessionId: {$ref: '#/components/schemas/Id'}
+        eventType: {$ref: '#/components/schemas/ProctorEventType'}
+        eventTime: {$ref: '#/components/schemas/Timestamp'}
+        source: {type: string, enum: [MEDIAPIPE]}
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: 仅允许非视频结构化状态；禁止人脸影像和视频。
+    ProctorConfigRequest:
+      type: object
+      required: [proctorEnabled, awayThresholdSeconds]
+      properties:
+        proctorEnabled: {type: boolean}
+        awayThresholdSeconds: {type: integer, format: int64, minimum: 1}
+    ProctorConfigData:
+      allOf:
+        - $ref: '#/components/schemas/ProctorConfigRequest'
+        - type: object
+          properties:
+            updateTime: {$ref: '#/components/schemas/Timestamp'}
+    ProctorConfigResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/ProctorConfigData'}
+    ReminderConfigRequest:
+      type: object
+      required: [remindersEnabled, taskStartEnabled, taskDeadlineEnabled, inactivityEnabled, quotaExpiryEnabled]
+      properties:
+        remindersEnabled: {type: boolean}
+        taskStartEnabled: {type: boolean}
+        taskDeadlineEnabled: {type: boolean}
+        inactivityEnabled: {type: boolean}
+        inactivityThresholdSeconds: {type: integer, format: int64, minimum: 1}
+        quotaExpiryEnabled: {type: boolean}
+      description: 额度到期提醒固定提前 24 小时，不提供任意提前量。
+    ReminderConfigData:
+      allOf:
+        - $ref: '#/components/schemas/ReminderConfigRequest'
+        - type: object
+          properties:
+            updateTime: {$ref: '#/components/schemas/Timestamp'}
+    ReminderConfigResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/ReminderConfigData'}
+    DashboardOverviewData:
+      type: object
+      required: [todayFocusSeconds, weekFocusSeconds, totalFocusSeconds, availableQuotaSeconds, todayConsumedSeconds, postUnlocked]
+      properties:
+        todayFocusSeconds: {$ref: '#/components/schemas/Seconds'}
+        weekFocusSeconds: {$ref: '#/components/schemas/Seconds'}
+        totalFocusSeconds: {$ref: '#/components/schemas/Seconds'}
+        availableQuotaSeconds: {$ref: '#/components/schemas/Seconds'}
+        todayConsumedSeconds: {$ref: '#/components/schemas/Seconds'}
+        postUnlocked: {type: boolean}
+    DashboardOverviewResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/DashboardOverviewData'}
+    CalendarDay:
+      type: object
+      required: [date, focusSeconds, earnedSeconds, consumedSeconds, postUnlocked]
+      properties:
+        date: {type: string, format: date}
+        focusSeconds: {$ref: '#/components/schemas/Seconds'}
+        earnedSeconds: {$ref: '#/components/schemas/Seconds'}
+        consumedSeconds: {$ref: '#/components/schemas/Seconds'}
+        postUnlocked: {type: boolean}
+    DashboardCalendarData:
+      type: object
+      required: [month, days]
+      properties:
+        month: {type: string, example: '2026-10'}
+        days:
+          type: array
+          items: {$ref: '#/components/schemas/CalendarDay'}
+    DashboardCalendarResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/DashboardCalendarData'}
+    StatPoint:
+      type: object
+      required: [date, focusSeconds, earnedSeconds, consumedSeconds]
+      properties:
+        date: {type: string, format: date}
+        focusSeconds: {$ref: '#/components/schemas/Seconds'}
+        earnedSeconds: {$ref: '#/components/schemas/Seconds'}
+        consumedSeconds: {$ref: '#/components/schemas/Seconds'}
+    DashboardStatData:
+      type: object
+      required: [period, anchorDate, points]
+      properties:
+        period: {type: string, enum: [WEEK, MONTH]}
+        anchorDate: {type: string, format: date}
+        points:
+          type: array
+          items: {$ref: '#/components/schemas/StatPoint'}
+    DashboardStatResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/DashboardStatData'}
+    PostAuthor:
+      type: object
+      required: [id, nickname]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        nickname: {type: string}
+        avatarUrl: {type: string, format: uri, nullable: true}
+    PostCreateRequest:
+      type: object
+      description: content 与 imageUrls 至少一个非空。
+      properties:
+        content: {type: string, nullable: true, maxLength: 5000}
+        imageUrls:
+          type: array
+          items: {type: string, format: uri}
+          default: []
+    Post:
+      type: object
+      required: [id, author, content, imageUrls, status, likeCount, commentCount, likedByMe, createTime]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        author: {$ref: '#/components/schemas/PostAuthor'}
+        content: {type: string, nullable: true}
+        imageUrls:
+          type: array
+          items: {type: string, format: uri}
+        status: {type: string, enum: [PENDING_REVIEW, PUBLISHED, HIDDEN]}
+        likeCount: {type: integer, minimum: 0}
+        commentCount: {type: integer, minimum: 0}
+        likedByMe: {type: boolean}
+        createTime: {$ref: '#/components/schemas/Timestamp'}
+    PostResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/Post'}
+    PostPageData:
+      type: object
+      required: [page, pageSize, total, items]
+      properties:
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Post'}
+    PostListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/PostPageData'}
+    LikeRequest:
+      type: object
+      required: [liked]
+      properties:
+        liked: {type: boolean}
+    LikeData:
+      type: object
+      required: [postId, liked, likeCount]
+      properties:
+        postId: {$ref: '#/components/schemas/Id'}
+        liked: {type: boolean}
+        likeCount: {type: integer, minimum: 0}
+    LikeResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/LikeData'}
+    CommentCreateRequest:
+      type: object
+      required: [content]
+      properties:
+        content: {type: string, minLength: 1, maxLength: 1000}
+        parentId: {$ref: '#/components/schemas/Id'}
+    Comment:
+      type: object
+      required: [id, postId, author, content, status, likeCount, createTime]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        postId: {$ref: '#/components/schemas/Id'}
+        parentId: {$ref: '#/components/schemas/Id'}
+        author: {$ref: '#/components/schemas/PostAuthor'}
+        content: {type: string}
+        status: {type: string, enum: [PENDING_REVIEW, PUBLISHED, HIDDEN]}
+        likeCount: {type: integer, minimum: 0}
+        createTime: {$ref: '#/components/schemas/Timestamp'}
+    CommentResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/Comment'}
+    CommentPageData:
+      type: object
+      required: [page, pageSize, total, items]
+      properties:
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Comment'}
+    CommentListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: {$ref: '#/components/schemas/CommentPageData'}
