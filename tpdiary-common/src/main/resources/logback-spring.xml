@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TPDiary 通用 JSON 日志模板。
+  traceId / userId 由 MdcTraceFilter 写入 MDC；慢 SQL 使用 TPDIARY_SLOW_SQL logger。
+-->
+<configuration scan="false">
+    <springProperty scope="context"
+                    name="applicationName"
+                    source="spring.application.name"
+                    defaultValue="tpdiary"/>
+    <springProperty scope="context"
+                    name="rootLogLevel"
+                    source="logging.level.root"
+                    defaultValue="INFO"/>
+
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdc>true</includeMdc>
+            <includeContext>false</includeContext>
+            <customFields>{"service":"${applicationName}","logSchema":"tpdiary-v1"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- 由 SlowSqlLogger 写入，禁止记录 SQL 实参。 -->
+    <logger name="TPDIARY_SLOW_SQL" level="INFO" additivity="false">
+        <appender-ref ref="JSON_CONSOLE"/>
+    </logger>
+
+    <root level="${rootLogLevel}">
+        <appender-ref ref="JSON_CONSOLE"/>
+    </root>
+</configuration>
